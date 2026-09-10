@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Send, Flame, Zap, Cloud } from "lucide-react";
+import { ChevronLeft, ChevronRight, Send, Flame, Zap, Cloud, Share2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SummaryPanel } from "./SummaryPanel";
 import { QuerySuggestions } from "./QuerySuggestions";
 import { ChatMessage } from "./ChatMessage";
+import { ShareDialog } from "./ShareDialog";
 import type { LayerSummary } from "@/hooks/useLayerSummary";
 import type { ExtractedLocation } from "@/utils/locationExtractor";
 
@@ -26,6 +27,7 @@ interface SidePanelProps {
   queryExamples?: string[];
   isLoadingSuggestions?: boolean;
   onLocationDetected?: (locations: ExtractedLocation[]) => void;
+  mapShareUrl?: string;
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
@@ -43,8 +45,12 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   queryExamples = [],
   isLoadingSuggestions = false,
   onLocationDetected,
+  mapShareUrl,
 }) => {
   const [inputValue, setInputValue] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareText, setShareText] = useState("");
+  const [shareTitle, setShareTitle] = useState("map view");
 
   const handleSend = () => {
     if (inputValue.trim()) {
@@ -55,6 +61,12 @@ export const SidePanel: React.FC<SidePanelProps> = ({
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputValue(suggestion);
+  };
+
+  const openShare = (title: string, text: string) => {
+    setShareTitle(title);
+    setShareText(text);
+    setShareOpen(true);
   };
 
   const layerIcons: Record<string, React.ReactNode> = {
@@ -89,7 +101,19 @@ export const SidePanel: React.FC<SidePanelProps> = ({
           >
             {/* Header */}
             <div className="p-4 border-b border-slate-700 bg-slate-900/50">
-              <h2 className="text-lg font-semibold text-white mb-4">Earth Data</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">Earth Data</h2>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Share current map view"
+                  title="Share current map view"
+                  className="text-slate-300 hover:bg-slate-800 hover:text-white"
+                  onClick={() => openShare("map view", `EarthGPT map view with ${activeLayers.join(", ") || "no active layers"}.`)}
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </div>
 
               {/* Layer Toggles */}
               <div className="space-y-3">
@@ -132,6 +156,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
                       content={msg.content}
                       isStreaming={isLoading && idx === chatMessages.length - 1 && msg.role === "assistant"}
                       onLocationDetected={onLocationDetected}
+                      onShare={(content) => openShare("AI answer", content)}
                     />
                   ))}
                 </div>
@@ -183,6 +208,13 @@ export const SidePanel: React.FC<SidePanelProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        title={shareTitle}
+        text={shareText}
+        url={mapShareUrl}
+      />
     </>
   );
 };

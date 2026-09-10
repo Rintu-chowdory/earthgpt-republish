@@ -9,18 +9,51 @@ import { useQuerySuggestions } from "@/hooks/useQuerySuggestions";
 import { trpc } from "@/lib/trpc";
 import type { ExtractedLocation } from "@/utils/locationExtractor";
 
+const getInitialLayerStates = () => {
+  const defaults = { fires: true, earthquakes: true, weather: false };
+  if (typeof window === "undefined") return defaults;
+
+  const layers = new URLSearchParams(window.location.search).get("layers");
+  if (!layers) return defaults;
+
+  const enabled = new Set(layers.split(","));
+  return {
+    fires: enabled.has("fires"),
+    earthquakes: enabled.has("earthquakes"),
+    weather: enabled.has("weather"),
+  };
+};
+
 export default function Home() {
   const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [layerStates, setLayerStates] = useState({
-    fires: true,
-    earthquakes: true,
-    weather: false,
-  });
+  const [layerStates, setLayerStates] = useState(getInitialLayerStates);
   const [chatMessages, setChatMessages] = useState<Array<{ role: string; content: any }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<any>(null);
   const [highlightedLocations, setHighlightedLocations] = useState<ExtractedLocation[]>([]);
+
+  const mapShareUrl = useMemo(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const params = new URLSearchParams();
+    params.set(
+      "layers",
+      Object.entries(layerStates)
+        .filter(([, enabled]) => enabled)
+        .map(([layer]) => layer)
+        .join(",")
+    );
+
+    if (selectedEntity) {
+      const eventType = selectedEntity.confidence !== undefined ? "fire" : "earthquake";
+      params.set("event", eventType);
+      params.set("lat", String(selectedEntity.latitude));
+      params.set("lon", String(selectedEntity.longitude));
+    }
+
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  }, [layerStates, selectedEntity]);
 
   // Fetch live data
   const { wildfires } = useWildfires(layerStates.fires);
@@ -200,6 +233,7 @@ export default function Home() {
         queryExamples={examples}
         isLoadingSuggestions={isLoadingSuggestions}
         onLocationDetected={handleLocationDetected}
+        mapShareUrl={mapShareUrl}
       />
     </div>
   );

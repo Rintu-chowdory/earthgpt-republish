@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { TypingMessage } from "./TypingMessage";
 import { extractLocations } from "@/utils/locationExtractor";
 import type { ExtractedLocation } from "@/utils/locationExtractor";
+import { Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
   onLocationDetected?: (locations: ExtractedLocation[]) => void;
+  onShare?: (content: string) => void;
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -15,6 +18,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   content,
   isStreaming = false,
   onLocationDetected,
+  onShare,
 }) => {
   const [locations, setLocations] = useState<ExtractedLocation[]>([]);
 
@@ -93,6 +97,20 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 +{locations.length - 3} more
               </span>
             )}
+          </div>
+        )}
+        {role === "assistant" && !isStreaming && onShare && (
+          <div className="mt-2 flex justify-end border-t border-slate-600/50 pt-2">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Share this AI answer"
+              title="Share this AI answer"
+              className="text-slate-400 hover:bg-slate-700 hover:text-white"
+              onClick={() => onShare(content)}
+            >
+              <Share2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
         )}
       </div>
