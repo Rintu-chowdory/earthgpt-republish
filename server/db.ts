@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, wildfires, earthquakes, chatMessages, InsertWildfire, InsertEarthquake, InsertChatMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,137 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getWildfiresByBoundingBox(
+  minLat: number,
+  maxLat: number,
+  minLon: number,
+  maxLon: number,
+  daysBack: number = 1
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+  try {
+    const result = await db
+      .select()
+      .from(wildfires)
+      .where(
+        and(
+          sql`CAST(${wildfires.latitude} AS DECIMAL(10,6)) >= ${minLat}`,
+          sql`CAST(${wildfires.latitude} AS DECIMAL(10,6)) <= ${maxLat}`,
+          sql`CAST(${wildfires.longitude} AS DECIMAL(10,6)) >= ${minLon}`,
+          sql`CAST(${wildfires.longitude} AS DECIMAL(10,6)) <= ${maxLon}`,
+          gte(wildfires.fetchedAt, cutoffDate)
+        )
+      )
+      .limit(10000);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get wildfires:", error);
+    return [];
+  }
+}
+
+export async function getEarthquakesByBoundingBox(
+  minLat: number,
+  maxLat: number,
+  minLon: number,
+  maxLon: number,
+  daysBack: number = 7
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+  try {
+    const result = await db
+      .select()
+      .from(earthquakes)
+      .where(
+        and(
+          sql`CAST(${earthquakes.latitude} AS DECIMAL(10,6)) >= ${minLat}`,
+          sql`CAST(${earthquakes.latitude} AS DECIMAL(10,6)) <= ${maxLat}`,
+          sql`CAST(${earthquakes.longitude} AS DECIMAL(10,6)) >= ${minLon}`,
+          sql`CAST(${earthquakes.longitude} AS DECIMAL(10,6)) <= ${maxLon}`,
+          gte(earthquakes.fetchedAt, cutoffDate)
+        )
+      )
+      .limit(10000);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get earthquakes:", error);
+    return [];
+  }
+}
+
+export async function upsertWildfire(fire: InsertWildfire): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  try {
+    await db.insert(wildfires).values(fire).onDuplicateKeyUpdate({
+      set: {
+        brightness: fire.brightness,
+        confidence: fire.confidence,
+        fetchedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("[Database] Failed to upsert wildfire:", error);
+  }
+}
+
+export async function upsertEarthquake(eq: InsertEarthquake): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  try {
+    await db.insert(earthquakes).values(eq).onDuplicateKeyUpdate({
+      set: {
+        magnitude: eq.magnitude,
+        depth: eq.depth,
+        fetchedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("[Database] Failed to upsert earthquake:", error);
+  }
+}
+
+export async function getChatMessages(userId: number, limit: number = 50) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    const result = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.userId, userId))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit);
+    return result.reverse();
+  } catch (error) {
+    console.error("[Database] Failed to get chat messages:", error);
+    return [];
+  }
+}
+
+export async function insertChatMessage(msg: InsertChatMessage): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  try {
+    await db.insert(chatMessages).values(msg);
+  } catch (error) {
+    console.error("[Database] Failed to insert chat message:", error);
+  }
 }
 
 // TODO: add feature queries here as your schema grows.

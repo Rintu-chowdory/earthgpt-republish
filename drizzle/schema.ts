@@ -25,4 +25,50 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+export const wildfires = mysqlTable("wildfires", {
+  id: int("id").autoincrement().primaryKey(),
+  latitude: varchar("latitude", { length: 32 }).notNull(),
+  longitude: varchar("longitude", { length: 32 }).notNull(),
+  brightness: varchar("brightness", { length: 32 }),
+  confidence: varchar("confidence", { length: 32 }),
+  acqDate: varchar("acqDate", { length: 16 }).notNull(),
+  acqTime: varchar("acqTime", { length: 8 }).notNull(),
+  satellite: varchar("satellite", { length: 32 }),
+  frp: varchar("frp", { length: 32 }),
+  daynight: varchar("daynight", { length: 8 }),
+  source: varchar("source", { length: 32 }).notNull(),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+});
+
+export type Wildfire = typeof wildfires.$inferSelect;
+export type InsertWildfire = typeof wildfires.$inferInsert;
+
+export const earthquakes = mysqlTable("earthquakes", {
+  id: int("id").autoincrement().primaryKey(),
+  externalId: varchar("externalId", { length: 64 }).notNull().unique(),
+  latitude: varchar("latitude", { length: 32 }).notNull(),
+  longitude: varchar("longitude", { length: 32 }).notNull(),
+  magnitude: varchar("magnitude", { length: 16 }).notNull(),
+  depth: varchar("depth", { length: 16 }),
+  place: text("place"),
+  time: varchar("time", { length: 32 }).notNull(),
+  tsunami: int("tsunami").default(0),
+  type: varchar("type", { length: 32 }),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+});
+
+export type Earthquake = typeof earthquakes.$inferSelect;
+export type InsertEarthquake = typeof earthquakes.$inferInsert;
+
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  role: varchar("role", { length: 16 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
 // TODO: Add your tables here
